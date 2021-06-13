@@ -9,9 +9,8 @@
 //
 
 
-#include "Arduino.h"
-#include "Wire.h"
-
+#include "hal.h"
+#include <inttypes.h>
 
 #define PCA9635_LIB_VERSION         (F("0.3.1"))
 
@@ -45,7 +44,7 @@
 class PCA9635
 {
 public:
-  explicit PCA9635(const uint8_t deviceAddress, TwoWire *wire = &Wire);
+  explicit PCA9635(const uint8_t deviceAddress, I2CDriver *wire);
 
 #if defined (ESP8266) || defined(ESP32)
   bool     begin(uint8_t sda, uint8_t scl);
@@ -90,7 +89,7 @@ private:
   uint8_t  _data;
   int      _error;
 
-  TwoWire*  _wire;
+  I2CDriver*  _wire;
 };
 
 // -- END OF FILE --

@@ -19,40 +19,22 @@
 
 
 #include "PCA9635.h"
-
+#include "Board.hpp"
+#include "Logging.hpp"
 
 //////////////////////////////////////////////////////////////
 //
 // Constructor
 //
-PCA9635::PCA9635(const uint8_t deviceAddress, TwoWire *wire)
+PCA9635::PCA9635(const uint8_t deviceAddress, I2CDriver *wire)
 {
   _address = deviceAddress;
   _wire    = wire;
 }
 
 
-#if defined (ESP8266) || defined(ESP32)
-bool PCA9635::begin(uint8_t sda, uint8_t scl)
-{
-  _wire = &Wire;
-  if ((sda < 255) && (scl < 255))
-  {
-    _wire->begin(sda, scl);
-  } else {
-    _wire->begin();
-  }
-  if (! isConnected()) return false;
-  reset();
-  return true;
-}
-#endif
-
-
 bool PCA9635::begin()
 {
-  _wire->begin();
-  if (! isConnected()) return false;
   reset();
   return true;
 }
@@ -60,8 +42,9 @@ bool PCA9635::begin()
 
 bool PCA9635::isConnected()
 {
-  _wire->beginTransmission(_address);
-  _error = _wire->endTransmission();
+
+//  _wire->beginTransmission(_address);
+//  _error = _wire->endTransmission();
   return (_error == 0);
 }
 
@@ -100,18 +83,21 @@ uint8_t PCA9635::writeN(uint8_t channel, uint8_t* arr, uint8_t count)
     return PCA9635_ERROR;
   }
   uint8_t base = PCA9635_PWM(channel);
-  _wire->beginTransmission(_address);
-  _wire->write(base);
-  for(uint8_t i = 0; i < count; i++)
-  {
-    _wire->write(arr[i]);
-  }
-  _error = _wire->endTransmission();
-  if (_error != 0)
-  {
-    _error = PCA9635_ERR_I2C;
-    return PCA9635_ERROR;
-  }
+  Board::Com::I2CBus::transmit(_address, &base, 1, &base, 0);
+  Board::Com::I2CBus::transmit(_address, arr, count, arr, 0);
+//  _wire->beginTransmission(_address);
+//  _wire->write(base);
+
+//  for(uint8_t i = 0; i < count; i++)
+//  {
+//    _wire->write(arr[i]);
+//  }
+//  _error = _wire->endTransmission();
+//  if (_error != 0)
+//  {
+//    _error = PCA9635_ERR_I2C;
+//    return PCA9635_ERROR;
+//  }
   return PCA9635_OK;
 }
 
@@ -197,10 +183,8 @@ int PCA9635::lastError()
 //
 uint8_t PCA9635::writeReg(uint8_t reg, uint8_t value)
 {
-  _wire->beginTransmission(_address);
-  _wire->write(reg);
-  _wire->write(value);
-  _error = _wire->endTransmission();
+  uint8_t data[] = {reg, value};
+  Board::Com::I2CBus::transmit(_address, data, 2, data, 0);
   if (_error == 0) _error = PCA9635_OK;
   else _error = PCA9635_ERR_I2C;
   return _error;
@@ -209,16 +193,8 @@ uint8_t PCA9635::writeReg(uint8_t reg, uint8_t value)
 
 uint8_t PCA9635::readReg(uint8_t reg)
 {
-  _wire->beginTransmission(_address);
-  _wire->write(reg);
-  _error = _wire->endTransmission();
-  if (_wire->requestFrom(_address, (uint8_t)1) != 1)
-  {
-    _error = PCA9635_ERROR;
-    return 0;
-  }
-  _error = PCA9635_OK;
-  _data = _wire->read();
+  Board::Com::I2CBus::transmit(_address, &reg, 1, &reg, 0);
+  Board::Com::I2CBus::receive(_address, &_data, 1);
   return _data;
 }
 
